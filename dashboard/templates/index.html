@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Smart Proxy Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <h1>Smart Proxy Dashboard</h1>
+    <p>Total Cached URLs: {{ total_cached }}</p>
+
+    <h3>Cached URLs:</h3>
+    <ul>
+        {% for url in cached_urls %}
+        <li>
+            {{ url }} —
+            <a href="/view?url={{ url }}" target="_blank">Preview</a>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+
+</html>
