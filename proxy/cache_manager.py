@@ -1,31 +1,25 @@
 # proxy/cache_manager.py
 
-import time
+import json
+from cache.memory_cache import MemoryCache
+from cache.redis_cache import RedisCache
 
-class CacheManager:
-    def __init__(self, ttl=300):
-        self.storage = {}
-        self.ttl = ttl  # time to live in seconds
+def get_cache_instance():
+    with open("config.json", "r") as f:
+        config = json.load(f)
 
-    def set(self, url, content):
-        self.storage[url] = {"content": content, "timestamp": time.time()}
+    cache_type = config.get("cache_type", "memory")
+    ttl = config.get("cache_ttl", 300)
 
-    def get(self, url):
-        data = self.storage.get(url)
-        if not data:
-            return None
-        # check if expired
-        if time.time() - data["timestamp"] > self.ttl:
-            del self.storage[url]
-            return None
-        return data["content"]
+    if cache_type == "redis":
+        redis_config = config.get("redis", {})
+        return RedisCache(
+            ttl=ttl,
+            host=redis_config.get("host", "localhost"),
+            port=redis_config.get("port", 6379),
+        )
+    else: # memory is default
+        return MemoryCache(ttl=ttl)
 
-    def keys(self):
-        return list(self.storage.keys())
-
-    def size(self):
-        return len(self.storage)
-
-
-# ✅ Create a global instance to import from dashboard
-cache = CacheManager()
+# Create a global instance to be used by the proxy and dashboard
+cache = get_cache_instance()

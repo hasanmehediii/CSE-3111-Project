@@ -1,15 +1,29 @@
-from flask import Flask, render_template, request, abort
+from flask import Flask, render_template, request, abort, jsonify
+import json
 from proxy.cache_manager import cache
-from cache.memory_cache import MemoryCache
+from proxy.request_log import request_log
+
+def load_config():
+    with open("config.json", "r") as f:
+        return json.load(f)
 
 def create_dashboard():
     dashboard_app = Flask(__name__)
+    config = load_config()
+    blacklist = config.get("blacklist", [])
+    cache_type = config.get("cache_type", "memory")
 
     @dashboard_app.route('/')
     def index():
         total_cached = cache.size()
         cached_urls = cache.keys()
-        return render_template('index.html', total_cached=total_cached, cached_urls=cached_urls)
+        return render_template(
+            'index.html',
+            total_cached=total_cached,
+            cached_urls=cached_urls,
+            blacklist=blacklist,
+            cache_type=cache_type.capitalize()
+        )
 
     @dashboard_app.route('/view')
     def view_page():
@@ -21,12 +35,9 @@ def create_dashboard():
             return "❌ No cached content found for this URL.", 404
         return content
 
-    @dashboard_app.route('/test_memory_cache')
-    def test_memory_cache():
-        memory_cache = MemoryCache(capacity=100)
-        memory_cache.set("test_key", "test_value")
-        retrieved_value = memory_cache.get("test_key")
-        return f"Retrieved value from MemoryCache: {retrieved_value}"
+    @dashboard_app.route('/api/requests')
+    def api_requests():
+        return jsonify(request_log.get_all())
 
     return dashboard_app
 

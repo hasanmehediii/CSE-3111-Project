@@ -8,17 +8,97 @@
 
 <body>
     <h1>Smart Proxy Dashboard</h1>
-    <p>Total Cached URLs: {{ total_cached }}</p>
 
-    <h3>Cached URLs:</h3>
-    <ul>
-        {% for url in cached_urls %}
-        <li>
-            {{ url }} —
-            <a href="/view?url={{ url }}" target="_blank">Preview</a>
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="container">
+        <div class="main-content">
+            <h2>Live Requests</h2>
+            <table id="requests-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Method</th>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sidebar">
+            <h2>Configuration</h2>
+            <p><strong>Cache Type:</strong> {{ cache_type }}</p>
+
+            <h3>Blacklist:</h3>
+            <ul id="blacklist">
+                {% for domain in blacklist %}
+                <li>{{ domain }}</li>
+                {% else %}
+                <li>No domains blacklisted.</li>
+                {% endfor %}
+            </ul>
+
+            <h2>Cache Info</h2>
+            <p>Total Cached URLs: <span id="total-cached">{{ total_cached }}</span></p>
+
+            <h3>Cached URLs:</h3>
+            <ul id="cached-urls">
+                {% for url in cached_urls %}
+                <li>
+                    <span class="url-cell" title="{{ url }}">{{ url }}</span> —
+                    <a href="/view?url={{ url }}" target="_blank">Preview</a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+
+    <script>
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString();
+        }
+
+        async function fetchRequests() {
+            try {
+                const response = await fetch('/api/requests');
+                if (!response.ok) {
+                    console.error('Failed to fetch requests');
+                    return;
+                }
+                const requests = await response.json();
+                const tableBody = document.querySelector('#requests-table tbody');
+                tableBody.innerHTML = ''; // Clear existing rows
+
+                requests.forEach(req => {
+                    const row = document.createElement('tr');
+                    if (req.source === 'blacklist') {
+                        row.classList.add('blacklisted');
+                    }
+                    row.innerHTML = `
+                        <td>${formatTimestamp(req.timestamp)}</td>
+                        <td>${req.method}</td>
+                        <td class="url-cell" title="${req.url}">${req.url}</td>
+                        <td>${req.status}</td>
+                        <td>${req.source}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error fetching or processing requests:', error);
+            }
+        }
+
+        // Fetch requests every 2 seconds
+        setInterval(fetchRequests, 2000);
+
+        // Initial fetch
+        fetchRequests();
+    </script>
 </body>
 
 </html>
