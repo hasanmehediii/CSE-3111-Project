@@ -21,6 +21,61 @@ def is_blacklisted(url):
     domain = urlparse(url).hostname
     return domain in blacklist
 
+import socket
+import threading
+import requests
+import json
+import datetime
+import select
+from urllib.parse import urlparse
+from proxy.cache_manager import cache
+from proxy.request_log import request_log
+
+HOST = '127.0.0.1'
+PORT = 8080
+
+def load_config():
+    with open("config.json", "r") as f:
+        return json.load(f)
+
+config = load_config()
+blacklist = config.get("blacklist", [])
+
+def is_blacklisted(url):
+    domain = urlparse(url).hostname
+    # For CONNECT method, the URL is the domain itself
+    if not domain:
+        domain = url.split(':')[0]
+    return domain in blacklist
+
+def tunnel_traffic(client_socket, server_socket):
+    """ Manages the bidirectional data flow for a CONNECT tunnel. """
+    sockets = [client_socket, server_socket]
+    try:
+        while True:
+            readable, _, exceptional = select.select(sockets, [], sockets, 10)
+            if exceptional:
+                break
+            if not readable:
+                continue
+
+            for sock in readable:
+                data = sock.recv(8192)
+                if not data:
+                    # Socket closed
+                    return
+                
+                if sock is client_socket:
+                    server_socket.sendall(data)
+                else:
+                    client_socket.sendall(data)
+    except Exception as e:
+        print(f"[TUNNEL ERROR] {e}")
+    finally:
+        client_socket.close()
+        server_socket.close()
+
+
 def handle_client(conn, addr):
     start_time = datetime.datetime.now()
     log_entry = {
@@ -31,83 +86,151 @@ def handle_client(conn, addr):
         "source": ""
     }
     try:
-        # Receive the request
-        request = conn.recv(8192).decode(errors="ignore")
-        if not request:
-            conn.close()
+        # Receive the request headers
+        request_data = conn.recv(8192)
+        if not request_data:
             return
 
-        # Parse the first line (e.g., GET http://example.com/ HTTP/1.1)
-        first_line = request.splitlines()[0]
+        # Separate headers from body
+        header_end = request_data.find(b'\r\n\r\n')
+        if header_end == -1:
+            return
+        
+        headers_raw = request_data[:header_end].decode('utf-8', errors='ignore')
+        body = request_data[header_end + 4:]
+
+        # Parse request line and headers
+        request_lines = headers_raw.splitlines()
+        first_line = request_lines[0]
         parts = first_line.split()
         if len(parts) < 2:
-            conn.close()
             return
 
         method, url = parts[0], parts[1]
         log_entry["method"] = method
         log_entry["url"] = url
 
-        # Ensure URL has scheme for parsing
-        if not url.startswith("http://") and not url.startswith("https://"):
-            url = "http://" + url
-
         # Blacklist check
         if is_blacklisted(url):
             print(f"[BLACKLISTED] {url}")
             log_entry["status"] = "403 Forbidden"
             log_entry["source"] = "blacklist"
-            conn.sendall(b"HTTP/1.1 403 Forbidden\r\n\r\n<h1>403 Forbidden</h1><p>This site is blocked by the proxy.</p>")
-            conn.close()
+            response_body = b"<h1>403 Forbidden</h1><p>This site is blocked by the proxy.</p>"
+            response_headers = (
+                f"HTTP/1.1 403 Forbidden\r\n"
+                f"Content-Length: {len(response_body)}\r\n"
+                "Connection: close\r\n\r\n"
+            )
+            conn.sendall(response_headers.encode() + response_body)
             request_log.add(log_entry)
             return
 
-        # Only handle GET requests for now
-        if method != 'GET':
-            log_entry["status"] = "405 Method Not Allowed"
-            conn.sendall(b"HTTP/1.1 405 Method Not Allowed\r\n\r\n")
-            conn.close()
-            request_log.add(log_entry)
-            return
+        # Handle CONNECT for HTTPS
+        if method == 'CONNECT':
+            log_entry["source"] = "tunnel"
+            try:
+                dest_host, dest_port = url.split(':')
+                dest_port = int(dest_port)
+                
+                server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                server_socket.connect((dest_host, dest_port))
+                
+                conn.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+                
+                log_entry["status"] = "200 Connection established"
+                request_log.add(log_entry)
 
-        # Check cache
-        cached_data = cache.get(url)
-        if cached_data:
-            print(f"[CACHE HIT] {url}")
-            log_entry["source"] = "cache"
-            log_entry["status"] = "200 OK"
-            response_body = cached_data
-        else:
-            print(f"[FETCH] {url}")
+                # Start tunneling
+                tunnel_traffic(conn, server_socket)
+                # The tunnel function will handle closing sockets
+                return # End the thread here
+
+            except Exception as e:
+                print(f"[CONNECT ERROR] {e}")
+                log_entry["status"] = "502 Bad Gateway"
+                conn.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
+                request_log.add(log_entry)
+                return
+
+        headers = {}
+        for line in request_lines[1:]:
+            key, value = line.split(":", 1)
+            headers[key.strip()] = value.strip()
+
+        # Ensure URL has scheme for non-CONNECT requests
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = "http://" + url
+
+        # Handle GET requests (with caching)
+        if method == 'GET':
+            cached_data = cache.get(url)
+            if cached_data:
+                print(f"[CACHE HIT] {url}")
+                log_entry["source"] = "cache"
+                log_entry["status"] = "200 OK"
+                conn.sendall(cached_data.encode('utf-8', errors='ignore'))
+                request_log.add(log_entry)
+                return
+
             log_entry["source"] = "fetch"
             try:
-                response = requests.get(url)
-                response_body = response.text
-                cache.set(url, response_body)
+                response = requests.get(url, headers=headers, timeout=10)
                 log_entry["status"] = f"{response.status_code} {response.reason}"
+
+                res_headers = f"HTTP/1.1 {response.status_code} {response.reason}\r\n"
+                for key, value in response.headers.items():
+                    if key.lower() not in ['transfer-encoding', 'content-encoding', 'connection']:
+                         res_headers += f"{key}: {value}\r\n"
+                res_headers += "Connection: close\r\n\r\n"
+                
+                full_response = res_headers + response.text
+                cache.set(url, full_response)
+                conn.sendall(full_response.encode('utf-8', errors='ignore'))
+
             except Exception as e:
                 print(f"[ERROR] {e}")
                 log_entry["status"] = "502 Bad Gateway"
                 conn.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
-                conn.close()
-                request_log.add(log_entry)
-                return
+            
+            request_log.add(log_entry)
 
-        # Construct valid HTTP/1.1 response
-        response_headers = (
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/html; charset=UTF-8\r\n"
-            f"Content-Length: {len(response_body.encode())}\r\n"
-            "Connection: close\r\n\r\n"
-        )
+        # Handle POST requests (no caching)
+        elif method == 'POST':
+            log_entry["source"] = "fetch"
+            try:
+                content_length = int(headers.get('Content-Length', 0))
+                while len(body) < content_length:
+                    body += conn.recv(8192)
 
-        conn.sendall(response_headers.encode() + response_body.encode())
-        request_log.add(log_entry)
+                response = requests.post(url, headers=headers, data=body, timeout=10)
+                log_entry["status"] = f"{response.status_code} {response.reason}"
+
+                res_headers = f"HTTP/1.1 {response.status_code} {response.reason}\r\n"
+                for key, value in response.headers.items():
+                     if key.lower() not in ['transfer-encoding', 'content-encoding', 'connection']:
+                        res_headers += f"{key}: {value}\r\n"
+                res_headers += "Connection: close\r\n\r\n"
+
+                conn.sendall(res_headers.encode() + response.content)
+
+            except Exception as e:
+                print(f"[ERROR] {e}")
+                log_entry["status"] = "502 Bad Gateway"
+                conn.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
+
+            request_log.add(log_entry)
+
+        # Reject other methods
+        else:
+            log_entry["status"] = "405 Method Not Allowed"
+            conn.sendall(b"HTTP/1.1 405 Method Not Allowed\r\n\r\n")
+            request_log.add(log_entry)
 
     except Exception as e:
         print(f"[ERROR] {e}")
         log_entry["status"] = "500 Internal Server Error"
-        request_log.add(log_entry)
+        if log_entry["method"]:
+            request_log.add(log_entry)
     finally:
         conn.close()
 
