@@ -1,32 +1,12 @@
 import socket
 import threading
 import requests
-import json
-import datetime
-from urllib.parse import urlparse
-from proxy.cache_manager import cache
-from proxy.request_log import request_log
-
-HOST = '127.0.0.1'
-PORT = 8080
-
-def load_config():
-    with open("config.json", "r") as f:
-        return json.load(f)
-
-config = load_config()
-blacklist = config.get("blacklist", [])
-
-def is_blacklisted(url):
-    domain = urlparse(url).hostname
-    return domain in blacklist
-
-import socket
-import threading
-import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 import json
 import datetime
 import select
+import base64
 from urllib.parse import urlparse
 from proxy.cache_manager import cache
 from proxy.request_log import request_log
@@ -40,6 +20,10 @@ def load_config():
 
 config = load_config()
 blacklist = config.get("blacklist", [])
+content_blacklist = config.get("content_blacklist", [])
+proxy_user = config.get("proxy_user")
+proxy_password = config.get("proxy_password")
+
 
 def is_blacklisted(url):
     domain = urlparse(url).hostname
@@ -85,6 +69,23 @@ def handle_client(conn, addr):
         "status": "",
         "source": ""
     }
+    
+    # Setup retry session
+    retry_config = config.get('retries', {})
+    total_retries = retry_config.get('total', 3)
+    backoff_factor = retry_config.get('backoff_factor', 0.5)
+
+    retry_strategy = Retry(
+        total=total_retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session = requests.Session()
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
     try:
         # Receive the request headers
         request_data = conn.recv(8192)
@@ -109,7 +110,41 @@ def handle_client(conn, addr):
         method, url = parts[0], parts[1]
         log_entry["method"] = method
         log_entry["url"] = url
+        
+        headers = {}
+        for line in request_lines[1:]:
+            key, value = line.split(":", 1)
+            headers[key.strip()] = value.strip()
 
+        # Handle Proxy Authentication
+        if proxy_user:
+            auth_header = headers.get('Proxy-Authorization')
+            auth_required_response = (
+                b'HTTP/1.1 407 Proxy Authentication Required\r\n'
+                b'Proxy-Authenticate: Basic realm="Proxy"\r\n'
+                b'Connection: close\r\n\r\n'
+            )
+            
+            if auth_header is None:
+                conn.sendall(auth_required_response)
+                return
+
+            try:
+                auth_type, auth_token = auth_header.split()
+                if auth_type.lower() != 'basic':
+                    conn.sendall(auth_required_response)
+                    return
+                
+                decoded_creds = base64.b64decode(auth_token).decode()
+                user, password = decoded_creds.split(':', 1)
+
+                if user != proxy_user or password != proxy_password:
+                    conn.sendall(auth_required_response)
+                    return
+            except Exception:
+                conn.sendall(auth_required_response)
+                return
+        
         # Blacklist check
         if is_blacklisted(url):
             print(f"[BLACKLISTED] {url}")
@@ -152,11 +187,6 @@ def handle_client(conn, addr):
                 request_log.add(log_entry)
                 return
 
-        headers = {}
-        for line in request_lines[1:]:
-            key, value = line.split(":", 1)
-            headers[key.strip()] = value.strip()
-
         # Ensure URL has scheme for non-CONNECT requests
         if not url.startswith("http://") and not url.startswith("https://"):
             url = "http://" + url
@@ -174,8 +204,22 @@ def handle_client(conn, addr):
 
             log_entry["source"] = "fetch"
             try:
-                response = requests.get(url, headers=headers, timeout=10)
+                response = session.get(url, headers=headers, timeout=10)
                 log_entry["status"] = f"{response.status_code} {response.reason}"
+                
+                content_type = response.headers.get('Content-Type', '').split(';')[0]
+                if content_type in content_blacklist:
+                    print(f"[CONTENT BLOCKED] {url} (Content-Type: {content_type})")
+                    log_entry["status"] = "403 Forbidden"
+                    response_body = b"<h1>403 Forbidden</h1><p>Content type is blocked by the proxy.</p>"
+                    response_headers = (
+                        f"HTTP/1.1 403 Forbidden\r\n"
+                        f"Content-Length: {len(response_body)}\r\n"
+                        "Connection: close\r\n\r\n"
+                    )
+                    conn.sendall(response_headers.encode() + response_body)
+                    request_log.add(log_entry)
+                    return
 
                 res_headers = f"HTTP/1.1 {response.status_code} {response.reason}\r\n"
                 for key, value in response.headers.items():
@@ -202,8 +246,22 @@ def handle_client(conn, addr):
                 while len(body) < content_length:
                     body += conn.recv(8192)
 
-                response = requests.post(url, headers=headers, data=body, timeout=10)
+                response = session.post(url, headers=headers, data=body, timeout=10)
                 log_entry["status"] = f"{response.status_code} {response.reason}"
+
+                content_type = response.headers.get('Content-Type', '').split(';')[0]
+                if content_type in content_blacklist:
+                    print(f"[CONTENT BLOCKED] {url} (Content-Type: {content_type})")
+                    log_entry["status"] = "403 Forbidden"
+                    response_body = b"<h1>403 Forbidden</h1><p>Content type is blocked by the proxy.</p>"
+                    response_headers = (
+                        f"HTTP/1.1 403 Forbidden\r\n"
+                        f"Content-Length: {len(response_body)}\r\n"
+                        "Connection: close\r\n\r\n"
+                    )
+                    conn.sendall(response_headers.encode() + response_body)
+                    request_log.add(log_entry)
+                    return
 
                 res_headers = f"HTTP/1.1 {response.status_code} {response.reason}\r\n"
                 for key, value in response.headers.items():
@@ -235,12 +293,18 @@ def handle_client(conn, addr):
         conn.close()
 
 def start_proxy(port=8080, ttl=300):
-    global config, blacklist
+    global config, blacklist, content_blacklist, proxy_user, proxy_password
     config = load_config()
     blacklist = config.get("blacklist", [])
+    content_blacklist = config.get("content_blacklist", [])
+    proxy_user = config.get("proxy_user")
+    proxy_password = config.get("proxy_password")
     cache.ttl = ttl
     print(f"🚀 Proxy server running on port {port}")
+    if proxy_user:
+        print(f"🔑 Proxy authentication enabled for user: {proxy_user}")
     print(f"Loaded {len(blacklist)} blacklisted domains.")
+    print(f"Loaded {len(content_blacklist)} blocked content types.")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(('0.0.0.0', port))
