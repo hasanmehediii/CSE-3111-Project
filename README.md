@@ -1,9 +1,9 @@
-# Smart Proxy and Cache Server
+# CacheCaught: Smart Proxy and Cache Server
 
 <p align="center">
-  <img src="proxy.png" alt="Server Logo" width="150" height="150"/>
+  <img src="attachments/proxy.png" alt="Server Logo" width="150" height="150"/>
   <br>
-  <strong>Smart Proxy Server</strong>
+  <strong>CacheCaught</strong>
 </p>
 
 A powerful, extensible, and smart proxy server with advanced caching capabilities and a web dashboard to monitor traffic. Originally a simple simulation for a Computer Networking Project, it has been enhanced with several advanced features.
@@ -25,7 +25,7 @@ A powerful, extensible, and smart proxy server with advanced caching capabilitie
 
 1.  Clone the repository:
     ```bash
-    git clone <https://github.com/hasanmehediii/CSE-3111-Project>
+    git clone https://github.com/hasanmehediii/CSE-3111-Project
     ```
 2.  Navigate to the project directory:
     ```bash
@@ -92,7 +92,7 @@ The web dashboard provides a view of the cached URLs.
 
 ## Configuration
 
-The `config.json` file is used to configure the proxy server.
+The `config.json` file is used to configure the proxy server. You can change anything here for your customization.
 
 ```json
 {
