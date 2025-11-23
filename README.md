@@ -21,6 +21,11 @@ A powerful, extensible, and smart proxy server with advanced caching capabilitie
 *   **Basic Proxy Authentication**: Secures the proxy by requiring a username and password.
 *   **Web Dashboard**: A simple web interface to monitor cache activity.
 
+## Screenshots
+
+![Dashboard Screenshot](attachments/cache_hit.png)
+
+
 ## Installation
 
 1.  Clone the repository:
