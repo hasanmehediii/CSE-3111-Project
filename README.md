@@ -67,23 +67,255 @@ A powerful, extensible, and smart proxy server with advanced caching capabilitie
     curl -x http://proxy_mehedi:mehedi@127.0.0.1:8080 http://du.ac.bd
     ```
 
-### Accessing from Other Devices
+## Accessing from Other Devices
 
-Yes, you can use the proxy server from another device (like a different laptop or a phone) on the same Wi-Fi network. The server is configured to accept connections from any device on the network.
+Yes, you can use the proxy server from another device (like a different laptop or a phone) on the same network. This section provides a comprehensive guide to set up cross-platform proxy access.
 
-**1. Find the Local IP Address of the Machine Running the Proxy**
+### Prerequisites
 
-*   **On Linux or macOS:** Open a terminal and run `ip a` or `ifconfig`. Look for the `inet` address under your Wi-Fi or Ethernet adapter (e.g., `wlan0` or `enp1s0`). It will likely start with `192.168.x.x`.
-*   **On Windows:** Open Command Prompt (`cmd.exe`) and run `ipconfig`. Look for the "IPv4 Address" under your active Wi-Fi or Ethernet adapter.
+Before you begin, ensure:
 
-**2. Configure the Proxy on the Other Device**
+*   Both devices are connected to the same network (Wi-Fi or Ethernet).
+*   The proxy server is running on the host machine.
+*   The firewall is not blocking the proxy port (default: `8080`).
+*   Network connectivity is working between both devices.
 
-On your second device, go to its system-wide network or proxy settings.
-*   **Server/IP:** Enter the IP address you found in step 1.
-*   **Port:** Enter the port the proxy is running on (default is `8080`).
-*   **Authentication:** If you have enabled the `proxy_user` and `proxy_password` in the config, your device or browser will prompt you for them. Some systems allow you to save the username and password directly in the proxy settings.
+### Step 1: Find the Local IP Address of the Proxy Server
 
-Once configured, all web traffic from your second device will be routed through the Smart Proxy Server.
+The key to accessing your proxy from another device is identifying the correct IP address of the machine running the proxy server.
+
+**On Linux/macOS (Proxy Server)**
+
+Open a terminal and run:
+
+```bash
+ip addr show
+# or
+ifconfig
+```
+
+Look for your active network interface (typically `wlan0`, `eth0`, `enp1s0`, or `en0`) and note the IPv4 address. It usually follows the pattern `192.168.x.x` or `10.0.x.x`.
+
+*Example output:*
+
+```
+wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP>
+    inet 192.168.1.105/24 brd 192.168.1.255 scope global dynamic wlan0
+```
+
+In this example, the IP address is `192.168.1.105`.
+
+**On Windows (Proxy Server)**
+
+Open `Command Prompt` and run:
+
+```cmd
+ipconfig
+```
+
+Look for the active connection (Wi-Fi or Ethernet) and note the "IPv4 Address". For example: `192.168.1.105`.
+
+### Step 2: Verify Firewall Settings
+
+Your firewall might be blocking access to the proxy port. You need to allow incoming connections on port `8080` (or your custom proxy port).
+
+**On Linux (Proxy Server)**
+
+If using `UFW` (Uncomplicated Firewall):
+
+```bash
+# Check if UFW is enabled
+sudo ufw status
+
+# Allow port 8080
+sudo ufw allow 8080
+
+# Or allow from specific IP (recommended for security)
+sudo ufw allow from 192.168.1.100 to any port 8080
+```
+
+If using `firewalld`:
+
+```bash
+sudo firewall-cmd --add-port=8080/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+**On Windows (Proxy Server)**
+
+1.  Open **Windows Defender Firewall** → **Allow an app through firewall**.
+2.  Click **Change settings**, then **Allow another app**.
+3.  Browse and select your Python installation or the app running **CacheCaught**.
+4.  Ensure both **Private** and **Public** networks are checked (or just **Private** if on a local network).
+5.  Click **Add**.
+
+Alternatively, open `PowerShell` as **Administrator**:
+
+```powershell
+# Allow port 8080 through Windows Firewall
+New-NetFirewallRule -DisplayName "Allow CacheCaught Proxy" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow
+```
+
+### Step 3: Verify Network Connectivity
+
+Before configuring the proxy, test if both devices can communicate:
+
+From the client device, ping the proxy server:
+
+*   **Linux/macOS:**
+    ```bash
+    ping 192.168.1.105
+    ```
+*   **Windows:**
+    ```cmd
+    ping 192.168.1.105
+    ```
+
+If you get responses, connectivity is working. If not, check that both devices are on the same network and no network isolation is enabled.
+
+### Step 4: Configure the Proxy on the Client Device
+
+**On Windows (Client)**
+
+1.  Open **Settings** → **Network & Internet** → **Proxy**.
+2.  Under "Manual proxy setup", toggle **Use a proxy server** ON.
+3.  Enter:
+    *   **Address**: `192.168.1.105` (replace with your server's IP)
+    *   **Port**: `8080` (or your custom port)
+4.  Click **Save**.
+
+For command-line tools like `curl`:
+
+```cmd
+curl -x http://proxy_mehedi:mehedi@192.168.1.105:8080 http://example.com
+```
+
+**On Linux/macOS (Client)**
+
+For system-wide proxy:
+
+```bash
+export http_proxy="http://proxy_mehedi:mehedi@192.168.1.105:8080"
+export https_proxy="http://proxy_mehedi:mehedi@192.168.1.105:8080"
+```
+
+For **Firefox** browser:
+
+1.  Open **Preferences** → **Network Settings** → **Settings**.
+2.  Choose "Manual proxy configuration".
+3.  Enter:
+    *   **HTTP Proxy**: `192.168.1.105`
+    *   **Port**: `8080`
+    *   **HTTPS Proxy**: `192.168.1.105`
+    *   **Port**: `8080`
+4.  Check "Also use this proxy for HTTPS".
+
+For **Chrome** browser:
+
+*   **Linux:**
+    ```bash
+    google-chrome --proxy-server="http://proxy_mehedi:mehedi@192.168.1.105:8080"
+    ```
+*   **macOS:**
+    ```bash
+    /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --proxy-server="http://proxy_mehedi:mehedi@192.168.1.105:8080"
+    ```
+
+### Troubleshooting Cross-Platform Issues
+
+**Cannot Access Proxy from Windows to Linux or Linux to Windows**
+
+This is typically caused by firewall issues. Follow this checklist:
+
+**1. Verify the Server is Listening on All Interfaces**
+
+The proxy should be configured to listen on `0.0.0.0`, not just `127.0.0.1`. Check your `config.json` or the proxy initialization code. Look for something like:
+
+```python
+# Ensure the proxy binds to all interfaces
+server.bind(('0.0.0.0', proxy_port))
+```
+
+If it's bound to `127.0.0.1`, only local connections will work. Update the configuration if needed.
+
+**2. Double-check the Firewall Rules**
+
+Make sure the firewall rules are actually applied:
+
+*   **Linux: Check UFW rules**
+    ```bash
+    sudo ufw status numbered
+    ```
+*   **Windows: Verify the firewall rule**
+    ```powershell
+    Get-NetFirewallRule -DisplayName "Allow CacheCaught Proxy"
+    ```
+
+**3. Test Connectivity with `telnet`/`nc`**
+
+From the client device, test if you can reach the port:
+
+*   **Linux/macOS:**
+    ```bash
+    nc -zv 192.168.1.105 8080
+    ```
+*   **Windows (PowerShell):**
+    ```powershell
+    Test-NetConnection -ComputerName 192.168.1.105 -Port 8080
+    ```
+
+If this fails, the firewall is likely blocking it.
+
+**4. Check Network Adapter Settings**
+
+On Linux, ensure the network adapter is not in "local only" mode:
+
+```bash
+# Check if the network adapter has an IP
+ip addr show wlan0
+```
+
+**5. Disable Firewall Temporarily (Testing Only)**
+
+To isolate firewall as the issue, temporarily disable it:
+
+*   **Linux:**
+    ```bash
+    sudo ufw disable
+    ```
+*   **Windows (PowerShell, as Administrator):**
+    ```powershell
+    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled $false
+    ```
+
+Try accessing the proxy again. If it works, re-enable the firewall and apply the specific rules mentioned above.
+
+**6. Router Configuration**
+
+Ensure your router is not blocking inter-device communication. Some guest networks isolate devices. Check your router's isolation settings.
+
+### Testing the Proxy
+
+Once configured, test with a simple HTTP request:
+
+*   **Linux/macOS:**
+    ```bash
+    curl -x http://proxy_mehedi:mehedi@192.168.1.105:8080 http://example.com
+    ```
+*   **Windows (Command Prompt or PowerShell):**
+    ```cmd
+    curl.exe -x http://proxy_mehedi:mehedi@192.168.1.105:8080 http://example.com
+    ```
+
+You should see the response from `example.com`. If successful, your proxy is working across devices.
+
+### Best Practices
+
+*   **Use HTTPS for sensitive data**: If transmitting sensitive information, consider setting up HTTPS on the proxy.
+*   **Change default credentials**: Update `proxy_user` and `proxy_password` in `config.json` for security.
+*   **Network isolation**: Use firewall rules to restrict access to trusted IPs only.
+*   **Monitor the dashboard**: Access `http://192.168.1.105:5000` (from another device) to verify cache activity.
+
 
 ## Dashboard
 
