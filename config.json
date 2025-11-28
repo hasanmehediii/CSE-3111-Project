@@ -12,7 +12,7 @@
     "proxy_password": "mehedi",
     "blacklist": [
         "example.com",
-        "blocked-site.com"
+        "youtube.com"
     ],
     "content_blacklist": [
         "image/jpeg",
