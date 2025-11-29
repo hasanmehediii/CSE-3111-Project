@@ -1,5 +1,5 @@
 {
-    "proxy_port": 8080,
+    "proxy_port": 9090,
     "dashboard_port": 5000,
     "cache_type": "lru",
     "cache_ttl": 300,

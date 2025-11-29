@@ -30,7 +30,10 @@ def is_blacklisted(url):
     # For CONNECT method, the URL is the domain itself
     if not domain:
         domain = url.split(':')[0]
-    return domain in blacklist
+    for bl_domain in blacklist:
+        if domain == bl_domain or domain.endswith("." + bl_domain):
+            return True
+    return False
 
 def tunnel_traffic(client_socket, server_socket):
     """ Manages the bidirectional data flow for a CONNECT tunnel. """
