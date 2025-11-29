@@ -29,6 +29,19 @@
         </div>
 
         <div class="sidebar">
+            <div class="proxy-form">
+                <h2>Test Proxy</h2>
+                <form id="proxy-request-form">
+                    <input type="text" id="proxy-url" name="url" placeholder="Enter URL to fetch" required>
+                    <button type="submit">Fetch via Proxy</button>
+                </form>
+                <div id="proxy-response-container">
+                    <h3>Proxy Response:</h3>
+                    <pre id="proxy-response"></pre>
+                    <button id="view-in-new-tab" style="display: none;">View in new tab</button>
+                    <p><strong>Source:</strong> <span id="proxy-status"></span></p>
+                </div>
+            </div>
             <h2>Configuration</h2>
             <p><strong>Cache Type:</strong> {{ cache_type }}</p>
 
@@ -98,6 +111,46 @@
 
         // Initial fetch
         fetchRequests();
+
+        document.getElementById('proxy-request-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const url = document.getElementById('proxy-url').value;
+            const responseContainer = document.getElementById('proxy-response');
+            const statusContainer = document.getElementById('proxy-status');
+            const newTabButton = document.getElementById('view-in-new-tab');
+
+            responseContainer.textContent = 'Fetching...';
+            statusContainer.textContent = '';
+            newTabButton.style.display = 'none';
+
+            try {
+                const response = await fetch('/proxy-request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url }),
+                });
+
+                const data = await response.json();
+                responseContainer.textContent = data.content;
+                statusContainer.textContent = data.status;
+                
+                if (data.content) {
+                    newTabButton.style.display = 'block';
+                    newTabButton.onclick = function() {
+                        const newWindow = window.open();
+                        newWindow.document.write(data.content);
+                        newWindow.document.close();
+                    }
+                }
+
+            } catch (error) {
+                responseContainer.textContent = 'Error fetching URL.';
+                statusContainer.textContent = 'Error';
+                console.error('Error:', error);
+            }
+        });
     </script>
 </body>
 

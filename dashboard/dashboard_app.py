@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, abort, jsonify
 import json
+import requests
 from proxy.cache_manager import cache
 from proxy.request_log import request_log
 
@@ -38,6 +39,43 @@ def create_dashboard():
     @dashboard_app.route('/api/requests')
     def api_requests():
         return jsonify(request_log.get_all())
+
+    @dashboard_app.route('/proxy-request', methods=['POST'])
+    def proxy_request():
+        data = request.get_json()
+        url = data.get('url')
+        if not url:
+            return jsonify({'error': 'URL is required'}), 400
+
+        # The proxy's address
+        proxy_address = f'http://{config["proxy_user"]}:{config["proxy_password"]}@127.0.0.1:{config["proxy_port"]}'
+        
+        proxies = {
+            'http': proxy_address,
+            'https': proxy_address
+        }
+        
+        try:
+            # Clear previous log for this URL to get a fresh status
+            request_log.clear_for_url(url)
+
+            # Make the request through the proxy
+            response = requests.get(url, proxies=proxies, verify=False) # verify=False for simplicity
+
+            # Now, check the log for the request we just made
+            latest_request = request_log.get_latest_for_url(url)
+            
+            cache_status = 'undefined' # Default
+            if latest_request:
+                cache_status = latest_request.get('source', 'undefined')
+
+
+            return jsonify({
+                'content': response.text,
+                'status': cache_status
+            })
+        except requests.exceptions.RequestException as e:
+            return jsonify({'error': str(e)}), 500
 
     return dashboard_app
 
