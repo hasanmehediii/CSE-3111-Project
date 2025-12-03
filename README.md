@@ -368,6 +368,42 @@ The `config.json` file is used to configure the proxy server. You can change any
 *   `content_blacklist`: A list of MIME types to block.
 *   `retries`: Configuration for the request retry mechanism.
 
+## Project Structure
+
+The project is organized into several directories, each with a specific purpose:
+
+*   `proxy/`: Contains the core logic for the proxy server.
+    *   `proxy_server.py`: The main entry point for the proxy server. It listens for incoming connections and passes them to the request handler.
+    *   `request_handler.py`: Handles individual client requests, including parsing, authentication, filtering, and caching.
+    *   `cache_manager.py`: Manages the cache, interacting with different cache implementations.
+    *   `request_log.py`: Logs request details.
+    *   `utils.py`: Contains utility functions used across the proxy module.
+*   `cache/`: Includes different caching strategy implementations.
+    *   `lru_cache.py`: An LRU (Least Recently Used) cache.
+    *   `memory_cache.py`: A simple in-memory cache.
+    *   `redis_cache.py`: A cache that uses Redis as a backend.
+*   `dashboard/`: The web dashboard for monitoring the proxy.
+    *   `dashboard_app.py`: A Flask application that serves the dashboard.
+    *   `templates/`: HTML templates for the dashboard.
+    *   `static/`: CSS and other static assets for the dashboard.
+*   `tests/`: Contains tests for the project.
+*   `app.py`: The main application entry point that starts both the proxy server and the dashboard.
+*   `config.json`: The configuration file for the proxy server.
+*   `requirements.txt`: A list of Python packages required to run the project.
+
+## How It Works
+
+The proxy server follows a simple workflow to handle client requests:
+
+1.  **Request Reception**: The `proxy_server` listens for incoming client connections on the configured port.
+2.  **Request Handling**: For each connection, a new thread is created to handle the request, managed by the `request_handler`.
+3.  **Authentication and Filtering**: The handler first checks for authentication credentials (if required). It then verifies if the requested domain or content type is blacklisted.
+4.  **Cache Check**: If the request is not blocked, the `cache_manager` checks if a valid response for the requested URL is already in the cache.
+5.  **Cache Hit**: If a cached response is found, it is returned directly to the client, saving bandwidth and time.
+6.  **Cache Miss**: If the request is not in the cache, the proxy forwards the request to the destination server.
+7.  **Response Caching**: The response from the destination server is stored in the cache by the `cache_manager` before being sent back to the client.
+8.  **Logging**: All requests are logged with details such as the client IP, requested URL, and response status.
+
 ## Author
 
 *   **Mehedi Hasan**
