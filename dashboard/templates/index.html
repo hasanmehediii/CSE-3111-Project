@@ -4,6 +4,8 @@
 <head>
     <title>Smart Proxy Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
 
 <body>
@@ -37,7 +39,7 @@
                 </form>
                 <div id="proxy-response-container">
                     <h3>Proxy Response:</h3>
-                    <pre id="proxy-response"></pre>
+                    <pre><code id="proxy-response" class="language-html"></code></pre>
                     <button id="view-in-new-tab" style="display: none;">View in new tab</button>
                     <p><strong>Source:</strong> <span id="proxy-status"></span></p>
                 </div>
@@ -135,6 +137,7 @@
                 const data = await response.json();
                 responseContainer.textContent = data.content;
                 statusContainer.textContent = data.status;
+                hljs.highlightAll();
                 
                 if (data.content) {
                     newTabButton.style.display = 'block';

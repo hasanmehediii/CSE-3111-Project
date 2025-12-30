@@ -1,13 +1,23 @@
+/* Hacker Theme for Smart Proxy Dashboard */
+
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #0d0d0d;
+    color: #00ff00;
     margin: 0;
     padding: 20px;
-    background-color: #f8f9fa;
-    color: #333;
 }
 
+h1,
+h2,
+h3 {
+    color: #00ff00;
+    border-bottom: 1px solid #00ff00;
+    padding-bottom: 5px;
+}
+
+
 h1 {
-    color: #007bff;
     text-align: center;
     margin-bottom: 30px;
 }
@@ -23,58 +33,44 @@ h1 {
 
 .sidebar {
     flex: 1;
-    background: #fff;
+    background: #1a1a1a;
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #00ff00;
+    box-shadow: 0 0 10px #00ff00;
     height: fit-content;
-}
-
-h2 {
-    color: #343a40;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 10px;
-    margin-top: 0;
 }
 
 #requests-table {
     width: 100%;
     border-collapse: collapse;
-    background: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    overflow: hidden;
+    background: #1a1a1a;
+    border: 1px solid #00ff00;
 }
 
 #requests-table th,
 #requests-table td {
     padding: 12px 15px;
     text-align: left;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid #00ff00;
 }
 
 #requests-table th {
-    background-color: #007bff;
-    color: white;
+    background-color: #00ff00;
+    color: #0d0d0d;
     font-weight: 600;
 }
 
 #requests-table tbody tr:nth-child(even) {
-    background-color: #f2f2f2;
+    background-color: #1f1f1f;
 }
 
 #requests-table tbody tr:hover {
-    background-color: #e9ecef;
+    background-color: #333;
 }
 
 #requests-table tbody tr.blacklisted {
-    background-color: #f8d7da;
-    color: #721c24;
-    font-weight: 500;
-}
-
-#requests-table tbody tr.blacklisted:hover {
-    background-color: #f5c6cb;
+    background-color: #ff0000;
+    color: #fff;
 }
 
 .url-cell {
@@ -85,15 +81,15 @@ h2 {
 }
 
 ul {
-    background: white;
+    background: #1a1a1a;
     padding: 0;
-    border-radius: 8px;
+    border: 1px solid #00ff00;
     list-style-type: none;
 }
 
 li {
     padding: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #00ff00;
 }
 
 li:last-child {
@@ -101,10 +97,79 @@ li:last-child {
 }
 
 a {
-    color: #007bff;
+    color: #00ff00;
     text-decoration: none;
 }
 
 a:hover {
     text-decoration: underline;
+}
+
+.proxy-form input,
+.proxy-form button {
+    width: calc(100% - 22px);
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #1a1a1a;
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.proxy-form button {
+    width: 100%;
+    cursor: pointer;
+}
+
+.proxy-form button:hover {
+    background: #00ff00;
+    color: #0d0d0d;
+}
+
+#proxy-response-container {
+    margin-top: 20px;
+    border: 1px solid #00ff00;
+    padding: 10px;
+}
+
+#proxy-response {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #000;
+    padding: 15px;
+    border-left: 3px solid #00ff00;
+}
+#view-in-new-tab {
+    background: #00ff00;
+    color: #0d0d0d;
+    font-family: 'Courier New', Courier, monospace;
+    border: 1px solid #00ff00;
+    padding: 10px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+#view-in-new-tab:hover {
+    background: #1a1a1a;
+    color: #00ff00;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #00ff00;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00cc00;
 }
