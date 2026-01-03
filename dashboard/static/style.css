@@ -1,76 +1,26 @@
-/* Hacker Theme for Smart Proxy Dashboard */
-
 body {
-    font-family: 'Courier New', Courier, monospace;
-    background-color: #0d0d0d;
-    color: #00ff00;
-    margin: 0;
-    padding: 20px;
-}
-
-h1,
-h2,
-h3 {
-    color: #00ff00;
-    border-bottom: 1px solid #00ff00;
-    padding-bottom: 5px;
-}
-
-
-h1 {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.container {
-    display: flex;
-    gap: 20px;
-}
-
-.main-content {
-    flex: 3;
+    background-color: #f8f9fa;
+    color: #212529;
 }
 
 .sidebar {
-    flex: 1;
-    background: #1a1a1a;
-    padding: 20px;
-    border: 1px solid #00ff00;
-    box-shadow: 0 0 10px #00ff00;
-    height: fit-content;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid #dee2e6;
 }
 
-#requests-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #1a1a1a;
-    border: 1px solid #00ff00;
+.card {
+    border: 1px solid #dee2e6;
 }
 
-#requests-table th,
-#requests-table td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #00ff00;
+.list-group-item {
+    background-color: #fff;
+    color: #212529;
+    border: 1px solid #dee2e6;
 }
 
-#requests-table th {
-    background-color: #00ff00;
-    color: #0d0d0d;
-    font-weight: 600;
-}
-
-#requests-table tbody tr:nth-child(even) {
-    background-color: #1f1f1f;
-}
-
-#requests-table tbody tr:hover {
-    background-color: #333;
-}
-
-#requests-table tbody tr.blacklisted {
-    background-color: #ff0000;
-    color: #fff;
+.table {
+    background-color: #fff;
 }
 
 .url-cell {
@@ -78,98 +28,41 @@ h1 {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-ul {
-    background: #1a1a1a;
-    padding: 0;
-    border: 1px solid #00ff00;
-    list-style-type: none;
-}
-
-li {
-    padding: 10px;
-    border-bottom: 1px solid #00ff00;
-}
-
-li:last-child {
-    border-bottom: none;
-}
-
-a {
-    color: #00ff00;
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-.proxy-form input,
-.proxy-form button {
-    width: calc(100% - 22px);
-    padding: 10px;
-    margin-bottom: 10px;
-    background: #1a1a1a;
-    border: 1px solid #00ff00;
-    color: #00ff00;
-    font-family: 'Courier New', Courier, monospace;
-}
-
-.proxy-form button {
-    width: 100%;
-    cursor: pointer;
-}
-
-.proxy-form button:hover {
-    background: #00ff00;
-    color: #0d0d0d;
+    display: inline-block;
+    vertical-align: middle;
 }
 
 #proxy-response-container {
-    margin-top: 20px;
-    border: 1px solid #00ff00;
-    padding: 10px;
+    background-color: #fff;
 }
 
 #proxy-response {
     max-height: 400px;
     overflow-y: auto;
-    overflow-x: hidden;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    background-color: #000;
-    padding: 15px;
-    border-left: 3px solid #00ff00;
-}
-#view-in-new-tab {
-    background: #00ff00;
-    color: #0d0d0d;
-    font-family: 'Courier New', Courier, monospace;
-    border: 1px solid #00ff00;
-    padding: 10px;
-    margin-top: 10px;
-    cursor: pointer;
+    background-color: #f8f9fa;
+    color: #212529;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
 }
 
-#view-in-new-tab:hover {
-    background: #1a1a1a;
-    color: #00ff00;
+.badge.bg-hit {
+    background-color: #28a745 !important;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-    width: 10px;
+.badge.bg-miss {
+    background-color: #dc3545 !important;
 }
 
-::-webkit-scrollbar-track {
-    background: #1a1a1a;
+.badge.bg-blacklist {
+    background-color: #ffc107 !important;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #00ff00;
+.main-content {
+    height: 100vh;
+    overflow-y: auto;
+}
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: #00cc00;
-}
