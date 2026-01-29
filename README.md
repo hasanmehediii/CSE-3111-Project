@@ -1,12 +1,16 @@
-# CacheCaught: Smart Proxy and Cache Server
+# Smart Cache and Proxy Server
 
 <p align="center">
-  <img src="attachments/proxy.png" alt="Server Logo" width="150" height="150"/>
+  <img src="attachments/proxy.png" alt="Server Logo" width="100" height="100"/>
   <br>
-  <strong>CacheCaught</strong>
 </p>
 
 A powerful, extensible, and smart proxy server with advanced caching capabilities and a web dashboard to monitor traffic. Originally a simple simulation for a Computer Networking Project, it has been enhanced with several advanced features.
+
+<p align="center">
+  <img src="attachments/CacheCaught.png"/>
+  <br>
+</p>
 
 ## Features
 
