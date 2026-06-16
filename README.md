@@ -17,13 +17,16 @@ A powerful, extensible, and smart proxy server with advanced caching capabilitie
 *   **HTTP/HTTPS Proxying**: Acts as an intermediary for your HTTP and HTTPS traffic.
 *   **Multi-Strategy Caching**:
     *   **In-Memory**: A basic, thread-safe in-memory cache.
-    *   **Redis**: Uses a Redis backend for persistent caching.
+    *   **Redis**: Uses a Redis backend for persistent caching (with automatic fallback to in-memory when Redis is unreachable).
     *   **LRU (Least Recently Used)**: An intelligent cache that automatically evicts the oldest items when it reaches its configured size limit.
 *   **Request Retries**: Automatically retries failed requests with a configurable backoff strategy, making it resilient to transient network issues.
 *   **Domain Blacklisting**: Blocks access to specified domains.
-*   **Content-Type Filtering**: Blocks requests for certain content types (e.g., images, videos) to save bandwidth.
+*   **Content-Type Filtering**: Blocks requests for certain content types (e.g., images, videos) to save bandwidth; supports wildcards like `image/*`.
 *   **Basic Proxy Authentication**: Secures the proxy by requiring a username and password.
-*   **Web Dashboard**: A simple web interface to monitor cache activity.
+*   **Live Web Dashboard**: A web interface to monitor cache activity, view live request logs, and operate the cache.
+*   **Cache Statistics**: Tracks hit/miss counters, bandwidth saved, and peak cache size, exposed via the dashboard and a JSON API.
+*   **Cache Control API**: Per-URL invalidation, full cache flush, and live config reload through the dashboard.
+*   **Graceful Shutdown**: `Ctrl+C` (SIGINT) and SIGTERM cleanly stop the proxy and dashboard.
 
 ## Screenshots
 
@@ -394,6 +397,19 @@ The project is organized into several directories, each with a specific purpose:
 *   `app.py`: The main application entry point that starts both the proxy server and the dashboard.
 *   `config.json`: The configuration file for the proxy server.
 *   `requirements.txt`: A list of Python packages required to run the project.
+
+## Dashboard API
+
+The dashboard exposes a small JSON API for inspecting and controlling the proxy at runtime:
+
+| Method | Endpoint                  | Description                                                  |
+| ------ | ------------------------- | ------------------------------------------------------------ |
+| GET    | `/api/stats`              | Hit/miss counters, bytes served from cache, peak cache size. |
+| POST   | `/api/cache/invalidate`   | Body `{"url": "..."}` – drop a single URL from the cache.    |
+| POST   | `/api/cache/clear`        | Empty the active cache backend.                              |
+| POST   | `/api/config/reload`      | Re-read `config.json` from disk (auth, ports, backends, etc).|
+
+`POST` endpoints return JSON like `{"status": "ok", "removed": 1}`.
 
 ## How It Works
 

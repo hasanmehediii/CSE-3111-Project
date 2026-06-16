@@ -1,10 +1,10 @@
-# proxy/request_log.py
-
+"""Thread-safe in-memory request log (ring buffer)."""
 import threading
 from collections import deque
 
+
 class RequestLog:
-    def __init__(self, max_size=100):
+    def __init__(self, max_size=200):
         self.log = deque(maxlen=max_size)
         self.lock = threading.Lock()
 
@@ -18,14 +18,21 @@ class RequestLog:
 
     def clear_for_url(self, url):
         with self.lock:
-            self.log = deque([entry for entry in self.log if entry.get('url') != url], maxlen=self.log.maxlen)
+            self.log = deque(
+                [e for e in self.log if e.get("url") != url],
+                maxlen=self.log.maxlen,
+            )
 
     def get_latest_for_url(self, url):
         with self.lock:
             for entry in self.log:
-                if entry.get('url') == url:
+                if entry.get("url") == url:
                     return entry
             return None
 
-# Global instance for request logging
+    def clear_all(self):
+        with self.lock:
+            self.log.clear()
+
+
 request_log = RequestLog()

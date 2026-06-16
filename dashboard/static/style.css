@@ -56,6 +56,19 @@ body {
 
 .badge.bg-blacklist {
     background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+#requests-table tbody tr td {
+    vertical-align: middle;
+}
+
+#cached-urls .list-group-item {
+    padding: 0.35rem 0.5rem;
+}
+
+.invalidate-btn {
+    margin-left: 0.25rem;
 }
 
 .main-content {
